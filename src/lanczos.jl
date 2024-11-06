@@ -35,58 +35,72 @@ function lanczos(A::Function, q::Vector, kmax::Int)::Matrix
     return T
 end
 
+
+function enforce_signs(Q, R)
+    for i in 1:min(size(R)...)
+        if R[i, i] < 0
+            Q[:, i] .= -Q[:, i]
+            R[i, :] .= -R[i, :]
+        end
+    end
+
+    return Q, R
+end
+
+function reorthogonalize!(Q, Q_prev_blocks)
+    for Q_prev in Q_prev_blocks
+        Q .-= Q_prev * (Q_prev' * Q)
+    end
+    QR = qr(Q)
+    return Matrix(QR.Q), QR.R
+end
+
+
 """
     block_lanczos(A::Function, Q::Matrix, kmax::Int)::Matrix
 
 Performs kmax steps of the block Lanczos iteration on a matrix A, that is implicitly accessible only through matrix-vector
 multiplications.
 """
-function block_lanczos(A::Function, V::Matrix, kmax::Int)::Matrix
-    b = size(V, 2)  # block size
-    T = zeros(kmax * b, kmax * b)
-
-    # Initialize the first block Q1 and B1
-    QR = qr(V)
-    Q1 = Matrix(QR.Q)  # Extract only the first b columns
-    B1 = QR.R  # R is already of size b x b
-    AQ1 = hcat([A(Q1[:, i]) for i = 1:b]...)  # Compute A*Q1
-    A1 = Q1' * AQ1  # Project A onto Q1
-    T[1:b, 1:b] = A1
-
-    # Compute the initial Q2 and B1 for the next iteration
-    QR = qr(AQ1 - Q1 * A1)
-    Q2 = Matrix(QR.Q)
-    B1 = QR.R[1:b, 1:b]
-    T[1:b, b+1:2*b] = -B1'
-    T[b+1:2*b, 1:b] = -B1
-
-    # Main loop
-    for k = 2:kmax
-        # Compute A*Q2
-        AQ2 = hcat([A(Q2[:, i]) for i = 1:b]...)
-
-        # Project A onto Q2 to get A2
-        A2 = Q2' * AQ2
-        T[(k-1)*b+1:k*b, (k-1)*b+1:k*b] = A2  # Place A2 in T
-
-        # Compute the next block Q_{k+1} and B_k
-        QR = qr(AQ2 - Q2 * A2 - Q1 * B1')
-        Q3 = Matrix(QR.Q)
-        B2 = QR.R
-
-        # Update T with off-diagonal B blocks
-        T[(k-1)*b+1:k*b, (k-2)*b+1:(k-1)*b] = -B1
-        T[(k-2)*b+1:(k-1)*b, (k-1)*b+1:k*b] = -B1'
-
-        # Shift Q and B for the next iteration
-        Q1, Q2 = Q2, Q3
-        B1 = B2
-    end
+function block_lanczos(matvecA::Function, V::Matrix, kmax::Int)
+    b = size(V, 2)               # Dimensions of B
+    Q = Vector{Matrix{Float64}}(undef, kmax + 1)  # To store orthonormal blocks Q1, Q2, ..., Qk+1
+    B = Vector{Matrix{Float64}}(undef, kmax)
+    A = Vector{Matrix{Float64}}(undef, kmax)
     
-    return T
+    # Step 1: Initialization
+    QR = qr(V)
+    Q[1], R_out = enforce_signs(Matrix(QR.Q), QR.R)
+    AQ1 = hcat([matvecA(Q[1][:, i]) for i=1:b]...)
+    A[1] = Q[1]'*AQ1
+
+    # Now QR factorize R to get Q[2], B[1]
+    R = AQ1 - Q[1]*A[1]
+    QR = qr(R)
+    Q[2], B[1] = enforce_signs(Matrix(QR.Q), QR.R)
+
+    for k in 2:kmax
+        AQk = hcat([matvecA(Q[k][:, i]) for i=1:b]...)
+        A[k] = Q[k]'*AQk
+        R = AQk - Q[k]*A[k] - Q[k-1]*B[k-1]'
+        QR = qr(R)
+        Q[k+1], B[k] = enforce_signs(Matrix(QR.Q), QR.R)
+
+        # # Reorthogonalize Q[k+1] against previous Q blocks if needed
+        # Q[k+1], _ = reorthogonalize!(Q[k+1], Q[1:k])
+    end
+
+    T = zeros(kmax*b, kmax*b)
+    for k=1:kmax
+        T[(k-1)*b+1:k*b, (k-1)*b+1:k*b] = A[k]
+        if k != 1
+            T[(k-1)*b+1:k*b, (k-2)*b+1:(k-1)*b] = B[k-1]
+            T[(k-2)*b+1:(k-1)*b, (k-1)*b+1:k*b] = B[k-1]'
+        end
+    end
+
+    return T, R_out
 end
-
-
 
 
 # Define adaptive stochastic Lanczos quadrature function
@@ -128,11 +142,11 @@ function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matri
         end
     elseif method == "block"
         b = size(Ω, 2) # Block size
-        T_k = block_lanczos(A, hcat([ω/norm(ω) for ω in eachcol(Ω)]...), k)
+        T_k, R = block_lanczos(A, Ω, k)
         E = eigen(T_k)
         U = E.vectors
         Θ = E.values
-        total = sum([ norm(U[1:b, i])^2 * f(Θ[i]) for i = 1:k*b ])
+        total = sum([ norm(R'*U[1:b, i])^2 * f(Θ[i]) for i = 1:k*b ])
     end
 
     return total 
