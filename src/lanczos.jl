@@ -1,6 +1,7 @@
 module StochasticLanczos
 
 using LinearAlgebra
+using Primes
 
 # Define lanczos_step! function
 function lanczos_step!(A::Function, v1::Vector)
@@ -53,6 +54,30 @@ function reorthogonalize!(Q, Q_prev_blocks)
     end
     QR = qr(Q)
     return Matrix(QR.Q), QR.R
+end
+
+"""
+    divisors(n::Int)
+
+Utility function for finding all of the positive divisors of an integer `n`, this is useful for finding all of the allowable block sizes in the block Lanczos algorithm
+"""
+function divisors(n::Int)
+    d = Int64[1]
+    for (p,e) in factor(n)
+        t = Int64[]
+        r = 1
+
+        for i in 1:e
+            r *= p
+            for u in d
+                push!(t, u*r)
+            end
+        end
+
+        append!(d, t)
+    end
+
+    return sort(d)
 end
 
 
@@ -125,8 +150,8 @@ end
 """
     block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matrix, k::Int, b::Int, method::String="block")::Real
 
-Uses k steps of the Stochastic Lanczos Quadrature to approximate the block quadratic form ``\\Omega^\\top f(A)\\Omega``. This can
-either be done using the block Lanczos iteration on teh matrix Ω, or using the unblocked iteration on the columns of Ω.
+Uses k steps of the Stochastic Lanczos Quadrature to approximate the trace of the block quadratic form ``\\Omega^\\top f(A)\\Omega``. This can
+either be done using the block Lanczos iteration on the matrix Ω, or using the unblocked iteration on the columns of Ω.
 """
 function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matrix, k::Int, method::String="block")::Real
     if method == "single"
@@ -153,6 +178,6 @@ function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matri
 end
 
 # Export the main functions
-export stochastic_lanczos_quadrature, block_stochastic_lanczos_quadrature, lanczos, block_lanczos
+export stochastic_lanczos_quadrature, block_stochastic_lanczos_quadrature, lanczos, block_lanczos, divisors
 
 end
