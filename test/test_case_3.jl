@@ -8,7 +8,7 @@ A = sprand(m, n, density)
 qr_A = qr(A)
 Q = qr_A.Q
 
-max_eigenval = 1e10
+max_eigenval = 100
 eigenvals = LinRange(1, max_eigenval, n)
 Λ = Diagonal(eigenvals)
 
@@ -19,7 +19,11 @@ function matvecA(x::Vector)::Vector
     return A*x
 end
 
-function f(x::Real)::Real
+function f(x)::Real
+    if typeof(x) <: Complex
+        x = real(x)
+    end
+    
     if x > 0
         return x^(1/3)
     else
