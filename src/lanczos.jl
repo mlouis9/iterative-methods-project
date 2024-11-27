@@ -80,7 +80,7 @@ end
 Performs kmax steps of the block Lanczos iteration on a matrix A, that is implicitly accessible only through matrix-vector
 multiplications.
 """
-function block_lanczos(matvecA::Function, V::Matrix, kmax::Int; reorthogonalize=true, reorthogonalization_fraction=0.1)
+function block_lanczos(matvecA::Function, V::Matrix, kmax::Int; reorthogonalize=true, reorthogonalization_fraction=0.1 )
     b = size(V, 2)               # Dimensions of B
     Q = Vector{Matrix{Float64}}(undef, kmax + 1)  # To store orthonormal blocks Q1, Q2, ..., Qk+1
     B = Vector{Matrix{Float64}}(undef, kmax)
@@ -161,7 +161,8 @@ end
 Uses k steps of the Stochastic Lanczos Quadrature to approximate the trace of the block quadratic form ``\\Omega^\\top f(A)\\Omega``. This can
 either be done using the block Lanczos iteration on the matrix Ω, or using the unblocked iteration on the columns of Ω.
 """
-function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matrix, k::Int, method::String="block")::Real
+function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matrix, k::Int, method::String="block";
+    reorthogonalization_fraction::Real=0.1)::Real
     if method == "single"
         total = 0
         for ω in eachcol(Ω)
@@ -175,7 +176,7 @@ function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matri
         end
     elseif method == "block"
         b = size(Ω, 2) # Block size
-        T_k, R = block_lanczos(A, Ω, k)
+        T_k, R = block_lanczos(A, Ω, k; reorthogonalization_fraction=reorthogonalization_fraction)
         E = eigen(T_k)
         U = E.vectors
         Θ = E.values

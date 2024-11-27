@@ -23,7 +23,8 @@ so that the estimate always converges.
 
 Returns the functional trace estimate
 """
-function hutchinson_estimator(f::Function, A::Function, n::Int, s::Int, b::Int, k::Int; Ω_provided::Union{Nothing, AbstractMatrix}=nothing)::Real
+function hutchinson_estimator(f::Function, A::Function, n::Int, s::Int, b::Int, k::Int; 
+    Ω_provided::Union{Nothing, AbstractMatrix}=nothingM, reorthogonalization_fraction::Real=0.1)::Real
     # Draw s random vectors of length n from a Rademacher distribution unless a set is already provided (primarily for benchmarking)
     Ω = Ω_provided === nothing ? [rand([-1, 1]) for _ in 1:n, _ in 1:s] : Ω_provided
 
