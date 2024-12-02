@@ -3,8 +3,8 @@ using SparseArrays
 using LinearAlgebra
 
 # Matrix dimensions
-m, n = 80, 80
-density = 0.1 # Fraction of nonzero elements
+m, n = 1000, 1000
+density = 0.01 # Fraction of nonzero elements
 
 A = sprand(m, n, density)
 qr_A = qr(A)
@@ -16,7 +16,7 @@ eigenvals = rand(Uniform(0, n/2), n)
 # Modify diagonal to control eigenvalues
 A = Q*Λ*Q'
 
-function matvecA(x::Vector)::Vector
+function matvecA(x::AbstractVector)::AbstractVector
     return A*x
 end
 

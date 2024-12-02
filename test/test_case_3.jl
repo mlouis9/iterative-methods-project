@@ -15,7 +15,7 @@ eigenvals = LinRange(1, max_eigenval, n)
 # Modify diagonal to control eigenvalues
 A = Q*Λ*Q'
 
-function matvecA(x::Vector)::Vector
+function matvecA(x::AbstractVector)::AbstractVector
     return A*x
 end
 

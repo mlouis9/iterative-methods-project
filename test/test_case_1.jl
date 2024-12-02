@@ -7,7 +7,7 @@ density = 0.1 # Fraction of nonzero elements
 A = sprand(m, n, density)
 A = 0.5*(A + A') + n*I
 
-function matvecA(x::Vector)::Vector
+function matvecA(x::AbstractVector)::AbstractVector
     return A*x
 end
 

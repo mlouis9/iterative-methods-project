@@ -6,7 +6,7 @@ density = 0.1 # Fraction of nonzero elements
 
 A = Matrix(Diagonal(collect(1:n)))
 
-function matvecA(x::Vector)::Vector
+function matvecA(x::AbstractVector)::AbstractVector
     return A*x
 end
 
