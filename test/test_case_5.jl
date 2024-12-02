@@ -10,7 +10,7 @@ A = sprand(m, n, density)
 qr_A = qr(A)
 Q = qr_A.Q
 
-eigenvals = rand(Uniform(0, n/2), n)
+eigenvals = [ 1/sqrt(i) for i=1:n ]
 Λ = Diagonal(eigenvals)
 
 # Modify diagonal to control eigenvalues

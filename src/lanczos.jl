@@ -187,6 +187,6 @@ function block_stochastic_lanczos_quadrature(f::Function, A::Function, Ω::Matri
 end
 
 # Export the main functions
-export stochastic_lanczos_quadrature, block_stochastic_lanczos_quadrature, lanczos, block_lanczos, divisors
+export stochastic_lanczos_quadrature, block_stochastic_lanczos_quadrature, lanczos, block_lanczos, divisors, enforce_signs
 
 end
