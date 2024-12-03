@@ -2,6 +2,7 @@ module Utils
 
 using Base.Threads
 using Plots
+using ..Estimators
 
 """
 Used for computing convergence of Lanczos iteration to Hutch estimator for a fixed set of samples as a function of block size b
@@ -28,7 +29,7 @@ Note the residual is with respect to the converged Hutch estimate for a given sa
 function plot_block_estimates(block_estimates, ks, bs, converged_estimate; k_max=ks[end], logscale=true)
     max_k_index = findfirst(>=(k_max), ks)
 
-    plot_scale = logscale ? :log10 : :ln
+    plot_scale = logscale ? :log10 : :identity
     p = plot()
     for (b_index, b) in enumerate(bs)
         plot!(p, ks[1:max_k_index], abs.(block_estimates[b_index, 1:max_k_index] .- converged_estimate), label="b=$b", xlabel="Lanczos Iterations (k)", 
@@ -38,6 +39,32 @@ function plot_block_estimates(block_estimates, ks, bs, converged_estimate; k_max
     return p
 end
 
-export compute_block_estimates, plot_block_estimates
+"""
+Used for plotting convergence of Lanczos iteration to Hutch estimator for a fixed set of samples as a function of block size b.
+
+Note the residual is with respect to the converged Hutch estimate for a given sample size (not necessarily the converged trace estimate)
+"""
+function plot_block_variance_estimates(block_estimates, block_stddev_of_variance_estimates, ks, bs; k_max=ks[end], logscale=false)
+    max_k_index = findfirst(>=(k_max), ks)
+
+    plot_scale = logscale ? :log10 : :identity
+
+    palette = cgrad(:rainbow, length(bs)).colors
+    p = plot()
+    for (b_index, b) in enumerate(bs)
+        x = ks[1:max_k_index]
+        y = block_estimates[b_index, 1:max_k_index]
+        σ = block_stddev_of_variance_estimates[b_index, 1:max_k_index]
+        color = palette[b_index]
+        plot!(p, x, y, label="b=$b", xlabel="Lanczos Iterations (k)", ylabel="Estimator Variance", gridlinewidth=2, yscale=plot_scale,
+            color=color)
+        plot!(p, x, y .+ σ,  fill_between=(y .- σ), color=color, alpha=0.1, label="")
+        plot!(p, x, y .+ 2σ, fill_between=(y .- 2σ), color=color, alpha=0.05, label="")
+    end
+
+    return p
+end
+
+export compute_block_estimates, plot_block_estimates, plot_block_variance_estimates
 
 end
