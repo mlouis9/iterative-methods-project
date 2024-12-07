@@ -1,6 +1,7 @@
 using Distributions
 using SparseArrays
 using LinearAlgebra
+using MyProject.Utils
 
 # Matrix dimensions
 m, n = 1000, 1000
@@ -10,15 +11,13 @@ A = sprand(m, n, density)
 qr_A = qr(A)
 Q = qr_A.Q
 
-eigenvals = [ 1/sqrt(i) for i=1:n ]
+eigenvals = rand(Uniform(0, n/2), n)
 Λ = Diagonal(eigenvals)
 
 # Modify diagonal to control eigenvalues
 A = Q*Λ*Q'
 
-function matvecA(x::AbstractVector)::AbstractVector
-    return A*x
-end
+matvecA = create_matvecA(A) # Creates a block matvec function for A
 
 function f(x)::Real
     if x > 0
@@ -29,3 +28,4 @@ function f(x)::Real
 end
 
 exactfA = Q*Diagonal(f.(eigenvals))*Q'
+exact = tr(exactfA)

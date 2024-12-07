@@ -1,4 +1,5 @@
 using FastExpm  # For computing matrix exponentials as a benchmark
+using MyProject.Utils
 
 # Matrix dimensions
 m, n = 100, 100
@@ -15,9 +16,7 @@ eigenvals = LinRange(1, max_eigenval, n)
 # Modify diagonal to control eigenvalues
 A = Q*Λ*Q'
 
-function matvecA(x::AbstractVector)::AbstractVector
-    return A*x
-end
+matvecA = create_matvecA(A)
 
 function f(x)::Real
     if typeof(x) <: Complex

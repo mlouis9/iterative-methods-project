@@ -2,14 +2,13 @@ using SparseArrays
 using LinearAlgebra
 using Arpack
 using MatrixMarket
+using MyProject.Utils
 
-matrix_file = "bcsstk26.mtx"
+matrix_file = "test_cases/bcsstk09.mtx"
 A = mmread(matrix_file)
 n = size(A, 1)
 
-function matvecA(x::AbstractVector)::AbstractVector
-    return A*x
-end
+matvecA = create_matvecA(A)
 
 function f(x)::Real
     if x > 0
