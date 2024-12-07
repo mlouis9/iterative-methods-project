@@ -65,6 +65,22 @@ function plot_block_variance_estimates(block_estimates, block_stddev_of_variance
     return p
 end
 
-export compute_block_estimates, plot_block_estimates, plot_block_variance_estimates
+"""
+    create_matvecA(A::Union{Function, AbstractArray})::Function
+
+This is a utility function that creates functions that apply the matrix A to a given set of vectors. The main difference is whether
+A is provided explicitly as a matrix or as a function that returns matvecs (if A is not obtainable explicitly), wherein different methods
+are dispatched to form block matrix vector products with A. Most importantly, if A is given explicitly, we can take advantage of BLAS level
+3 when forming block matrix vector products with A.
+"""
+function create_matvecA(A::Union{Function, AbstractArray})::Function
+    if typeof(A) <: Function
+        return X::AbstractArray -> hcat([A(xcol) for xcol in eachcol(X)]...)
+    else # A is given explicitly
+        return X::AbstractArray -> A * X
+    end
+end
+
+export compute_block_estimates, plot_block_estimates, plot_block_variance_estimates, create_matvecA
 
 end

@@ -14,7 +14,7 @@ so that the estimate always converges.
 
 # Arguments
 - `f::Function`: The function applied to A
-- `A::Function`: The function that gives matrix-vector products with A
+- `A::Function`: A function that applies A to a set of vectors X
 - `n::Int`: The dimension of A (assumed to be ``\\mathbf{A}\\in \\mathbb{R}^{n\\times n}``)
 - `s::Int`: The number of samples to use for the Hutchinson estimator
 - `b::Int`: The block size (note ``b\\leq n`` and ``b`` must be a divisor of ``n`` otherwise an error will be thrown)
@@ -53,8 +53,6 @@ end
 
 Applies the Hutch++ variance-reduced stochastic trace estimator to estimate the functional trace of A, where A is only accessible by
 matrix-vector products.
-
-
 """
 function hutch_pp_estimator(f::Function, A::Function, n::Int, s::Int, b::Int, k::Int;
     Ω_provided::Union{Nothing, AbstractMatrix}=nothing, reorthogonalization_fraction::Real=0.1)
@@ -74,12 +72,12 @@ function hutch_pp_estimator(f::Function, A::Function, n::Int, s::Int, b::Int, k:
     # --------------------------------
     # Form the low rank approximation
     # --------------------------------
-    Y = hcat([ A(Ω[:, i]) for i=(s÷2 + 1):s ]...)
+    Y = A(Ω)
     QR = qr(Y)
     Q = Matrix(QR.Q)
 
     # Compute A_tilde = Q^T * A * Q
-    A_tilde = Q' * hcat([ A( col ) for col in eachcol(Q) ]...)
+    A_tilde = Q' * A(Q)
 
     # Compute tr(f(A_tilde))
     E = eigen(A_tilde)

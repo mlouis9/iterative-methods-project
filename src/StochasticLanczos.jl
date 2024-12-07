@@ -89,21 +89,19 @@ function block_lanczos(matvecA::Function, V::Matrix, kmax::Int; reorthogonalize=
     # Step 1: Initialization
     QR = qr(V)
     Q[1], R_out = enforce_signs(Matrix(QR.Q), QR.R)
-    AQ1 = hcat([matvecA(Q[1][:, i]) for i=1:b]...)
-    A[1] = Q[1]' * AQ1
+    A[1] = Q[1]' * matvecA(Q[1])
 
     # Compute residual and orthonormalize for Q[2], B[1]
-    R = AQ1 - Q[1] * A[1]
+    R = matvecA(Q[1]) - Q[1] * A[1]
     QR = qr(R)
     Q[2], B[1] = enforce_signs(Matrix(QR.Q), QR.R)
 
     for k in 2:kmax
         # Matrix-vector product with current block
-        AQk = hcat([matvecA(Q[k][:, i]) for i=1:b]...)
-        A[k] = Q[k]' * AQk
+        A[k] = Q[k]' * matvecA(Q[k])
 
         # Compute residual
-        R = AQk - Q[k] * A[k] - Q[k-1] * B[k-1]'
+        R = matvecA(Q[k]) - Q[k] * A[k] - Q[k-1] * B[k-1]'
 
         # Selective reorthogonalization
         if reorthogonalize
