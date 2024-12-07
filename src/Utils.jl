@@ -2,23 +2,46 @@ module Utils
 
 using Base.Threads
 using Plots
+using BenchmarkTools
 using ..Estimators
 
 """
 Used for computing convergence of Lanczos iteration to Hutch estimator for a fixed set of samples as a function of block size b
 """
-function compute_block_estimates(ks::AbstractVector, bs::AbstractVector, hutchinson_estimator::Function)
+function compute_block_estimates(ks::AbstractVector, bs::AbstractVector, hutchinson_estimator::Function; profile::Bool = false)
     block_estimates = zeros(length(bs), length(ks))
+    times = profile ? zeros(length(bs), length(ks)) : nothing
 
-    # Now, compute all of the estimates
-    Threads.@threads for idx in CartesianIndices(block_estimates)
-        b_index, k_index = Tuple(idx)
-        b = bs[b_index]
-        k = ks[k_index]
-        block_estimates[b_index, k_index] = hutchinson_estimator(b, k)
+    if profile
+        # Sequential computation with `@btime` for profiling
+        for b_index in eachindex(bs)
+            for k_index in eachindex(ks)
+                b = bs[b_index]
+                k = ks[k_index]
+                result = hutchinson_estimator(b, k)
+                # Benchmark only the computation
+                time_taken = @belapsed begin
+                    result = $hutchinson_estimator($b, $k)
+                end
+                block_estimates[b_index, k_index] = result
+                times[b_index, k_index] = time_taken
+            end
+        end
+    else
+        # Parallel computation without profiling
+        Threads.@threads for idx in CartesianIndices(block_estimates)
+            b_index, k_index = Tuple(idx)
+            b = bs[b_index]
+            k = ks[k_index]
+            result = hutchinson_estimator(b, k)
+            if result === nothing
+                error("hutchinson_estimator returned `nothing` for b=$b, k=$k")
+            end
+            block_estimates[b_index, k_index] = result
+        end
     end
 
-    return block_estimates
+    return profile ? (block_estimates, times) : block_estimates
 end
 
 """
@@ -26,14 +49,19 @@ Used for plotting convergence of Lanczos iteration to Hutch estimator for a fixe
 
 Note the residual is with respect to the converged Hutch estimate for a given sample size (not necessarily the converged trace estimate)
 """
-function plot_block_estimates(block_estimates, ks, bs, converged_estimate; k_max=ks[end], logscale=true)
+function plot_block_estimates(block_estimates, ks, bs, converged_estimate; cost_function=nothing, k_max=ks[end], logscale=true)
     max_k_index = findfirst(>=(k_max), ks)
 
     plot_scale = logscale ? :log10 : :identity
     p = plot()
     for (b_index, b) in enumerate(bs)
-        plot!(p, ks[1:max_k_index], abs.(block_estimates[b_index, 1:max_k_index] .- converged_estimate), label="b=$b", xlabel="Lanczos Iterations (k)", 
-        ylabel="Residual", gridlinewidth=2, yscale=plot_scale)
+        if cost_function === nothing
+            plot!(p, ks[1:max_k_index], abs.(block_estimates[b_index, 1:max_k_index] .- converged_estimate)./converged_estimate, 
+                label="b=$b", xlabel="Lanczos Iterations (k)", ylabel="Relative Residual", gridlinewidth=2, yscale=plot_scale)
+        else
+            plot!(p, cost_function.(ks[1:max_k_index], b), abs.(block_estimates[b_index, 1:max_k_index] .- converged_estimate)./converged_estimate, 
+                label="b=$b", xlabel="Lanczos Iterations (k)", ylabel="Relative Residual", gridlinewidth=2, yscale=plot_scale)
+        end
     end
 
     return p
